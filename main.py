@@ -3,14 +3,17 @@ import json
 from datetime import datetime
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from paapi import AmazonAPI
 
+from amazon_paapi import AmazonApi
+from amazon_paapi.helpers import ItemInfoHelper
+
+# Amazon API 認証情報
 ACCESS_KEY = "AKPA01CNWU1745142862"
 SECRET_KEY = "rOH6NQF2OoowdNRKgv/chobq0rF+UL2u2Qr4KoG9"
 ASSOCIATE_TAG = "seisenassocia-22"
-REGION = "JP"
+COUNTRY = "JP"
 
-amazon = AmazonAPI(ACCESS_KEY, SECRET_KEY, ASSOCIATE_TAG, REGION)
+amazon = AmazonApi(ACCESS_KEY, SECRET_KEY, ASSOCIATE_TAG, COUNTRY)
 
 asin_map = {
     "B0CSCTB5NV": "弊社",
@@ -19,20 +22,28 @@ asin_map = {
 }
 
 results = {}
-for asin, name in asin_map.items():
-    try:
-        product = amazon.get_product(asin)
-        browse_nodes = product.browse_nodes
-        for node in browse_nodes:
-            if node.display_name == "ホーム＆キッチン":
-                results[name] = node.rank
-                break
-        if name not in results:
-            results[name] = "取得失敗"
-    except Exception as e:
-        results[name] = f"取得失敗（{e}）"
 
-# スプレッドシート記録
+# 商品ごとに情報取得
+for asin, label in asin_map.items():
+    try:
+        items = amazon.get_items(asins=[asin])
+        if items:
+            item = items[0]
+            browse_nodes = item.get("BrowseNodeInfo", {}).get("BrowseNodes", [])
+            found = False
+            for node in browse_nodes:
+                if node.get("DisplayName") == "ホーム＆キッチン":
+                    results[label] = node.get("Rank", "取得失敗")
+                    found = True
+                    break
+            if not found:
+                results[label] = "取得失敗"
+        else:
+            results[label] = "取得失敗（API応答なし）"
+    except Exception as e:
+        results[label] = f"取得失敗（{str(e)}）"
+
+# スプレッドシートへの書き込み
 SPREADSHEET_ID = "142erqSkdcYgRww77saND3sP_qDLN0mKgKFjMpcORWmo"
 now = datetime.utcnow()
 japan_time = now.strftime('%Y/%m/%d %H:%M')
@@ -44,5 +55,6 @@ gc = gspread.authorize(credentials)
 sh = gc.open_by_key(SPREADSHEET_ID)
 ws = sh.sheet1
 
+# 出力：1商品ずつ追加
 for name in ["弊社", "Greson", "JOYES"]:
     ws.append_row([japan_time, name, results.get(name, "取得失敗")])
