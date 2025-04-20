@@ -1,1 +1,3 @@
 amazon-paapi
+gspread
+oauth2client
