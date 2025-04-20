@@ -1,3 +1,3 @@
-python-paapi
+git+https://github.com/amzn/amazon-paapi@v1.0.0
 gspread
 oauth2client
