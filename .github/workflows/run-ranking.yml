@@ -1,8 +1,8 @@
 name: Run Amazon Ranking Script
 
 on:
-  schedule:
-    - cron: "0 21,5,13 * * *"  # 日本時間の 6時, 14時, 22時 に相当
+#  schedule:
+#    - cron: "0 21,5,13 * * *"  # 日本時間の 6時, 14時, 22時 に相当
   workflow_dispatch:  # 手動でも実行可能
 
 jobs:
